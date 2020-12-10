@@ -4,6 +4,11 @@ use strict;
 
 my $board = [];
 my $iters = shift;
+my $stuck;
+if ($iters < 0) {
+    $iters = -$iters;
+    $stuck = "stuck";
+}
 
 while (<>) {
     chomp;
@@ -14,6 +19,13 @@ sub step(+@) {
     my $inBoard = shift;
     my @outBoard;
 
+    if ($stuck) {
+        $inBoard->[0][0] = 1;
+        $inBoard->[0][$#$inBoard] = 1;
+        $inBoard->[$#$inBoard][0] = 1;
+        $inBoard->[$#$inBoard][$#$inBoard] = 1;
+    }
+    
     for my $i (0..$#$inBoard) {
         push @outBoard, [];
         for my $j (0..$#{$inBoard->[$i]}) {
@@ -31,6 +43,13 @@ sub step(+@) {
             # print "$i $j $inBoard->[$i][$j] $neighbors -> ", !!($neighbors == 3 or ($neighbors == 2 and $inBoard->[$i][$j])), "\n";
             push @{$outBoard[$i]}, !!($neighbors == 3 or ($neighbors == 2 and $inBoard->[$i][$j]));
         }
+    }
+
+    if ($stuck) {
+        $outBoard[0][0] = 1;
+        $outBoard[0][$#$inBoard] = 1;
+        $outBoard[$#$inBoard][0] = 1;
+        $outBoard[$#$inBoard][$#$inBoard] = 1;
     }
 
     return \@outBoard;
