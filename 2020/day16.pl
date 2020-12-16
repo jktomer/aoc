@@ -62,6 +62,11 @@ while (<>) {
     }
 }
 
+# now we have eliminated any impossible position->field mappings, but don't
+# yet have a fully unique position->field map (some positions can match
+# multiple fields). but we know the mapping is 1:1, so for any fields whose
+# positions we know, eliminate them from the running for other positions until
+# the mapping is unique
 my $changed;
 do {
     $changed = 0;
