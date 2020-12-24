@@ -128,7 +128,6 @@ my %used = ($id => 1);
 
 while () {
     my %leftCell = %cell;
-    print fmt(%cell), " ";
     while () {
         my ($nextId, $side, $flip) = match($cell{id}, $cell{R});
         last unless $nextId;
@@ -137,10 +136,8 @@ while () {
         my $rotations = ($EDGE_ORDER{L} - $EDGE_ORDER{$side}) % 4;
         %cell = rotate($cells{$nextId}, $rotations);
         %cell = vflip(%cell) if $flip;
-        print fmt(%cell), " ";
         @image[-$_] .= $cell{contents}[-$_] for (1..@{$cell{contents}});
     }
-    print "\n";
     die "mismatched rows\n" if length($image[-1]) != length($image[0]);
     my ($nextRow, $side, $flip) = match($leftCell{id}, $leftCell{B});
     last unless $nextRow;
@@ -155,13 +152,10 @@ while () {
 my $monsters;
 my $roughness;
 $roughness += y/#/#/ for @image;
-say $roughness;
 for (1..4) {
-    my $monsters = monsters(@image);
-    say "[$monsters] ", $roughness - 15 * $monsters;
+    last if $monsters = monsters(@image);
     @image = reverse @image;
-    $monsters = monsters(@image);
-    say "[$monsters] ", $roughness - 15 * $monsters;
+    last if $monsters = monsters(@image);
     @image = map { my $row = $_; join("", map { substr($_, $row, 1) } @image) } 0..$#image;
 }
-
+say "[$monsters] ", $roughness - 15 * $monsters;
