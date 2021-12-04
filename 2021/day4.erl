@@ -37,9 +37,11 @@ read_boards(File, Acc) ->
     case file:read_line(File) of
         {ok, "\n"} ->
             read_boards(File, [[] | Acc]);
-        {ok, Row} ->
+        {ok, Line} ->
             [Board | Boards] = Acc,
-            read_boards(File, [[[list_to_integer(N) || N <- string:split(string:trim(Row), " ", all), N =/= ""] | Board] | Boards]);
+            Row = [list_to_integer(N) || N <- string:split(string:trim(Line), " ", all), N =/= ""],
+            Board1 = [Row | Board],
+            read_boards(File, [Board1 | Boards]);
         eof ->
             Acc
     end.
