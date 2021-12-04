@@ -7,32 +7,19 @@ main(_) ->
     {ok, File} = file:open("day4.txt", [read]),
     {Sequence, Boards} = parse(File),
     Index = maps:from_list(lists:zip(Sequence, lists:seq(1, length(Sequence)))),
-    {WinTurn, WinBoard} = check_boards(Index, Boards, true),
-    WinScore = score_board(Sequence,Index, WinTurn, WinBoard),
-    {LoseTurn, LoseBoard} = check_boards(Index, Boards, false),
-    LoseScore = score_board(Sequence,Index, LoseTurn, LoseBoard),
+    Scores = [score_board(Sequence, Index, Board) || Board <- Boards],
+    {_WinTurn, WinScore} = lists:min(Scores),
+    {_LoseTurn, LoseScore} = lists:max(Scores),
     io:format("~B ~B~n", [WinScore, LoseScore]).
 
-score_board(Sequence, Index, WinTurn, Board) ->
+score_board(Sequence, Index, Board) ->
+    WinTurn = win_turn(Index, Board),
     Unmarked = [N || N <- lists:flatten(Board), maps:get(N, Index, infinity) > WinTurn],
-    lists:sum(Unmarked) * lists:nth(WinTurn, Sequence).
+    {WinTurn, lists:sum(Unmarked) * lists:nth(WinTurn, Sequence)}.
 
-check_boards(Index, Boards, PlayToWin) ->
-    Start = case PlayToWin of
-                true -> infinity;
-                false -> -1
-            end,
-    lists:foldl(fun(Board, Acc) -> check_board(Index, Board, PlayToWin, Acc) end, {Start, undefined}, Boards).
-
-check_board(Index, Board, PlayToWin, {Best, _} = Acc) ->
+win_turn(Index, Board) ->
     Cols = [[lists:nth(N, Row) || Row <- Board] || N <- lists:seq(1, length(Board))],
-    WinTurn = lists:foldl(fun(Row, Turn) -> check_row(Index, Row, Turn) end, infinity, Board ++ Cols),
-    case WinTurn < Best of
-        PlayToWin ->
-            {WinTurn, Board};
-        _ ->
-            Acc
-    end.
+    lists:foldl(fun(Row, Turn) -> check_row(Index, Row, Turn) end, infinity, Board ++ Cols).
 
 check_row(Index, Row, Best) ->
     min(Best, lists:max([maps:get(N, Index, infinity) || N <- Row])).
