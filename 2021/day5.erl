@@ -9,28 +9,24 @@ main(_) ->
     io:format("~B ~B~n", [count_crossings(Lines, false), count_crossings(Lines, true)]).
 
 count_crossings(Lines, CountDiags) ->
-    Counts = lists:foldl(fun(Line, Acc) -> count_vents(Line, CountDiags, Acc) end, #{}, Lines),
-    length(lists:filter(fun(V) -> V > 1 end, maps:values(Counts))).
+    AllSpots = lists:sort(lists:flatten([vent_spots(L, CountDiags) || L <- Lines])),
+    {_, _, Crossings} = 
+        lists:foldl(fun(Spot, {Spot, false, Crossings}) -> {Spot, true, Crossings+1};
+                       (Spot, {Spot, true, _} = S) -> S;
+                       (Spot, {_, _, Crossings}) -> {Spot, false, Crossings}
+                    end, {undefined, false, 0}, AllSpots),
+    Crossings.
 
-count_vents({X0, Y0, X1, Y1}, CountDiags, Counts) ->
-    Spots =
-        if
-            X0 == X1 ->
-                [{X0, Y} || Y <- lists:seq(min(Y0, Y1), max(Y0, Y1))];
-            Y0 == Y1 ->
-                [{X, Y0} || X <- lists:seq(min(X0, X1), max(X0, X1))];
-            CountDiags ->
-                SX = case X0 < X1 of true -> 1; false -> -1 end,
-                SY = case Y0 < Y1 of true -> 1; false -> -1 end,
-                [{X0 + SX * I, Y0 + SY * I} || I <- lists:seq(0, max(X0, X1) - min(X0, X1))];
-            true ->
-                []
-        end,
-    lists:foldl(
-                fun(Coord, CountsAcc) ->
-                        maps:update_with(Coord, fun(X) -> X+1 end, 1, CountsAcc)
-                end,
-                Counts, Spots).
+vent_spots({X0, Y0, X1, Y1}, CountDiags) ->
+    Length = max(abs(X1 - X0), abs(Y1 - Y0)),
+    if
+        X0 == X1; Y0 == Y1; CountDiags ->
+            SX = if X0 < X1 -> 1; X0 == X1 -> 0; true -> -1 end,
+            SY = if Y0 < Y1 -> 1; Y0 == Y1 -> 0; true -> -1 end,
+            [{X0 + SX * I, Y0 + SY * I} || I <- lists:seq(0, Length)];
+        true ->
+            []
+    end.
 
 read_lines(File) ->
     read_lines(File, []).
