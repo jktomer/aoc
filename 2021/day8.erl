@@ -11,8 +11,7 @@ main(_) ->
     io:format("~p ~B~n", [length(EasyCases), lists:sum(Res)]).
 
 deduce({AllDigits, Outputs}) ->
-    [[One], [Four], [Seven], [Eight]] = [digits_with_size(Segs, AllDigits) || Segs <- [2, 4, 3, 7]],
-    [FiveSegs, SixSegs] = [digits_with_size(Segs, AllDigits) || Segs <- [5, 6]],
+    [[One], [Four], [Seven], FiveSegs, SixSegs, [Eight]] = [digits_with_size(Segs, AllDigits) || Segs <- [2, 4, 3, 5, 6, 7]],
     [Six] = [D || D <- SixSegs, length(D -- One) == 5],
     [Nine] = [D || D <- SixSegs, length(D -- Four) == 2],
     [Zero] = SixSegs -- [Six, Nine],
