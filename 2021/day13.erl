@@ -5,24 +5,18 @@
 
 main(_) ->
     {ok, File} = file:open("day13.txt", [read]),
-    {Dots, W, H, Folds} = read_input(File),
-    {Dots1, W1, H1} = fold(hd(Folds), {Dots, W, H}),
+    {Dots, Folds} = read_input(File),
+    Dots1 = fold(hd(Folds), Dots),
     io:format("~B~n", [maps:size(Dots1)]),
-    {Dots2, W2, H2} = lists:foldl(fun fold/2, {Dots1, W1, H1}, tl(Folds)),
-    write_dots(W2, H2, Dots2).
+    Dots2 = lists:foldl(fun fold/2, Dots1, tl(Folds)),
+    write_dots(Dots2).
 
-write_dots(W, H, Dots) ->
-    [io:format("~s~n", [[maps:get({X, Y}, Dots, $ ) || X <- lists:seq(0, W-1)]]) || Y <- lists:seq(0, H-1)].
+write_dots(Dots) ->
+    {W, H} = maps:fold(fun({X, Y}, _, {W, H}) -> {max(X, W), max(Y, H)} end, {0, 0}, Dots),
+    [io:format("~s~n", [[maps:get({X, Y}, Dots, $ ) || X <- lists:seq(0, W)]]) || Y <- lists:seq(0, H)].
 
-fold(Instruction, {Dots, W, H}) ->
-    Dots1 = maps:fold(fun(Dot, _, Acc) -> Acc#{fold_impl(Dot, Instruction) => $#} end, #{}, Dots),
-    {W1, H1} = fold_dims(W, H, Instruction),
-    {Dots1, W1, H1}.
-
-fold_dims(_, H, {x, XF}) ->
-    {XF, H};
-fold_dims(W, _, {y, YF}) ->
-    {W, YF}.
+fold(Instruction, Dots) ->
+    maps:fold(fun(Dot, _, Acc) -> Acc#{fold_impl(Dot, Instruction) => $#} end, #{}, Dots).
 
 fold_impl({X, Y}, {x, XF}) when X > XF ->
     {XF * 2 - X, Y};
@@ -32,18 +26,18 @@ fold_impl(Pt, _) ->
     Pt.
 
 read_input(File) ->
-    {Dots, W, H} = read_dots(File, 0, 0, #{}),
+    Dots = read_dots(File, #{}),
     Folds = lists:reverse(read_folds(File, [])),
-    {Dots, W, H, Folds}.
+    {Dots, Folds}.
 
-read_dots(File, W, H, Acc) ->
+read_dots(File, Acc) ->
     case file:read_line(File) of
         {ok, "\n"} -> 
-            {Acc, W, H};
+            Acc;
         {ok, Line} ->
             Line1 = string:chomp(Line),
             [X, Y] = [list_to_integer(N) || N <- string:split(Line1, ",")],
-            read_dots(File, max(W, X+1), max(H, Y+1), Acc#{{X, Y} => $#})
+            read_dots(File, Acc#{{X, Y} => $#})
     end.
 
 read_folds(File, Acc) ->
