@@ -11,23 +11,21 @@ main(_) ->
     io:format("~p ~p~n", [result(Part1), result(Part2)]).
 
 result(Pairs) ->
-    Freq = maps:fold(fun({K, _}, V, Map) -> maps:update_with(K, fun(C) -> V+C end, V, Map) end, #{}, Pairs),
-    FreqInv = lists:sort([{V, K} || {K, V} <- maps:to_list(Freq)]),
-    {Least, _} = hd(FreqInv),
-    {Most, _} = lists:last(FreqInv),
-    Most - Least.
+    Freq = maps:fold(fun({K, _}, V, Map) -> Map#{K => maps:get(K, Map, 0) + V} end, #{}, Pairs),
+    Counts = lists:sort(maps:values(Freq)),
+    lists:last(Counts) - hd(Counts).
 
 pair_insert(Pairs, Rules) ->
     maps:fold(fun(K, V, Acc) -> pair_insert(K, V, Rules, Acc) end, #{}, Pairs).
 
 pair_insert({A, B}, Count, Rules, Acc) ->
-    Update = fun(V) -> V + Count end,
     case Rules of
         #{{A, B} := C} ->
-            Acc1 = maps:update_with({A, C}, Update, Count, Acc),
-            maps:update_with({C, B}, Update, Count, Acc1);
+            AC = maps:get({A, C}, Acc, 0),
+            CB = maps:get({C, B}, Acc, 0),
+            Acc#{{A, C} => AC + Count, {C, B} => CB + Count};
         _ ->
-            maps:update_with({A, B}, Update, Count, Acc)
+            Acc#{{A, B} => maps:get({A, B}, Acc, 0) + Count}
     end.
 
 read_input(File) ->
