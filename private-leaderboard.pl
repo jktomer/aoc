@@ -2,7 +2,9 @@
 
 # Paste your session cookie from your web browser here. If you use Chrome,
 # load any adventofcode.com page with the network inspector open, find the
-# `cookie` request header, and grab everything after `session=`.
+# `cookie` request header, and grab everything after `session=`. If you don't
+# want to paste it here, you can set it in environment variable AOC_SESSION_ID
+# instead.
 my $session = '';
 
 # Usage: private-leaderboard.pl <year> <leaderboard ID> [day] [star]
@@ -18,8 +20,13 @@ binmode STDOUT, ':encoding(UTF-8)';
 
 my ($year, $lbid, $day, $star) = @ARGV;
 defined($lbid) or die "Usage: $0 year leaderboard-id [day] [star]\n";
-defined($session) or die "Paste your session cookie into the top of this script first.\n";
-
+unless ($session) {
+    if (exists $ENV{AOC_SESSION_ID}) {
+        $session = $ENV{AOC_SESSION_ID};
+    } else {
+        die "Paste your session cookie into the top of this script first.\n";
+    }
+}
 $day = sprintf("%02d", $day) if defined $day;
 
 my $ua = LWP::UserAgent->new();
