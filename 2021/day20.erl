@@ -29,10 +29,13 @@ compute(Algo, Img, Vastness, Y, X) ->
 fetch_section(Img, Vastness, Y, X) ->
     [fetch_bit(Img, Vastness, YY, XX) || YY <- lists:seq(Y-1, Y+1), XX <- lists:seq(X-1, X+1)].
 
-fetch_bit(Img, Vastness, Y, X) when X =< 0 orelse Y =< 0 orelse Y > length(Img) orelse X > length(hd(Img)) ->
-    Vastness;
-fetch_bit(Img, _, Y, X) ->
-    lists:nth(X, lists:nth(Y, Img)) band 1.
+fetch_bit(Img, Vastness, Y, X) ->
+    try
+        lists:nth(X, lists:nth(Y, Img)) band 1
+    catch
+        _:_ -> Vastness
+    end.
+
 
 read_input(File) ->
     {ok, AlgoStr} = file:read_line(File),
