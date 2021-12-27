@@ -19,24 +19,28 @@ eval([], Tab) ->
 eval([{_, inp, R} | T], Tab) ->
     {Insns, NextStage} = lists:splitwith(fun({_, inp, _}) -> false; (_) -> true end, T),
     NewTab = ets:new(x, []),
-    eval_section(Tab, NewTab, R, Insns),
+    eval_section(Tab, NewTab, R, Insns, NextStage == []),
     ets:delete(Tab),
     io:format("After ~s, ~p possible states~n", [fmt(hd(Insns)), ets:info(NewTab, size)]),
     eval(NextStage, NewTab).
 
-eval_section(Tab, NewTab, Reg, Insns) ->
-    eval_section(Tab, NewTab, Reg, Insns, ets:match_object(Tab, '$1', 1)).
-eval_section(_Tab, _NewTab, _Reg, _Insns, '$end_of_table') ->
+eval_section(Tab, NewTab, Reg, Insns, LastStage) ->
+    eval_section(Tab, NewTab, Reg, Insns, LastStage, ets:match_object(Tab, '$1', 1)).
+eval_section(_Tab, _NewTab, _Reg, _Insns, _LastStage, '$end_of_table') ->
     ok;
-eval_section(Tab, NewTab, Reg, Insns, {[{State, M0, N0}], Cont}) ->
+eval_section(Tab, NewTab, Reg, Insns, LastStage, {[{State, M0, N0}], Cont}) ->
     States0 = [{reg(Reg, State, D), M0 * 10 + D, N0 * 10 + D} || D <- lists:seq(1, 9)],
     lists:foreach(
       fun({S, M, N}) ->
-              S1 = lists:foldl(fun eval_op/2, S, Insns),
-              S1 =/= false and update_state(NewTab, S1, M, N)
+              case lists:foldl(fun eval_op/2, S, Insns) of
+                  false -> ok;
+                  S1 = {_, _, _, 0} -> update_state(NewTab, S1, M, N);
+                  S1 when not LastStage -> update_state(NewTab, S1, M, N);
+                  _ -> ok
+              end
       end,
       States0),
-    eval_section(Tab, NewTab, Reg, Insns, ets:match_object(Cont)).
+    eval_section(Tab, NewTab, Reg, Insns, LastStage, ets:match_object(Cont)).
 
 update_state(Tab, State, M, N) ->
     case ets:lookup(Tab, State) of
