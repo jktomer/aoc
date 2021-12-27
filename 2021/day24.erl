@@ -9,75 +9,46 @@ main(_) ->
     io:format("~p~n", [eval(Program)]).
 
 eval(Program) ->
-    Ranges = maps:values(eval(Program, [], #{{0, 0, 0, 0} => {0, 0}})),
-    Min = lists:min([Min || {Min, _} <- Ranges]),
-    Max = lists:max([Max || {_, Max} <- Ranges]),
-    {Min, Max}.
+    Tab = ets:new(x, []),
+    ets:insert(Tab, {{0, 0, 0, 0}, 0, 0}),
+    Vals = lists:append(eval(Program, Tab)),
+    {lists:min(Vals), lists:max(Vals)}.
 
-eval([], [], States) ->
-    maps:filter(fun({_, _, _, Z}, _) -> Z == 0 end, States);
-eval([Insn = {_, _, _, _} | T], Acc, States) ->
-    eval(T, [Insn | Acc], States);
-eval([Insn = {_Line, inp, R} | T], [], States) when map_size(States) < 1000000 ->
-    States1 =
-        maps:fold(
-          fun(State, {M, N}, StatesAcc) ->
-                  lists:foldl(
-                    fun(D, StatesAcc1) ->
-                            State1 = reg(R, State, D),
-                            maps:update_with(
-                              State1,
-                              fun({M0, N0}) -> {min(M0, M * 10 + D), max(N0, N * 10 + D)} end,
-                              {M * 10 + D, N * 10 + D},
-                              StatesAcc1)
-                    end,
-                    StatesAcc,
-                    lists:seq(1, 9))
-          end,
-          #{},
-          States),
-    io:format("After ~s, ~p possible states~n", [fmt(Insn), map_size(States1)]),
-    eval(T, [], States1);
-eval([Insn = {_Line, inp, R} | T], [], States) ->
-    StateList = maps:to_list(States),
-    lists:foldl(
-      fun(D, Acc) ->
-              States1 =
-                  maps:from_list(
-                    [{reg(R, S, D), {M * 10 + D, N * 10 + D}} ||
-                        {S, {M, N}} <- StateList]),
-              io:format("After ~s ~p, continuing sequentially with ~p states~n",
-                        [fmt(Insn), D, map_size(States1)]),
-              States2 = eval(T, [], States1),
-              io:format("After ~s ~p, adding ~p to ~p possible states~n",
-                        [fmt(Insn), D, map_size(States2), map_size(Acc)]),
-              maps:merge_with(
-                fun(_, {M0, N0}, {M1, N1}) -> {min(M0, M1), max(N0, N1)} end,
-                States2,
-                Acc)
+eval([], Tab) ->
+    ets:match(Tab, {{'_', '_', '_', 0}, '$1', '$2'});
+eval([{_, inp, R} | T], Tab) ->
+    {Insns, NextStage} = lists:splitwith(fun({_, inp, _}) -> false; (_) -> true end, T),
+    NewTab = ets:new(x, []),
+    eval_section(Tab, NewTab, R, Insns),
+    ets:delete(Tab),
+    io:format("After ~s, ~p possible states~n", [fmt(hd(Insns)), ets:info(NewTab, size)]),
+    eval(NextStage, NewTab).
+
+eval_section(Tab, NewTab, Reg, Insns) ->
+    eval_section(Tab, NewTab, Reg, Insns, ets:match_object(Tab, '$1', 1)).
+eval_section(_Tab, _NewTab, _Reg, _Insns, '$end_of_table') ->
+    ok;
+eval_section(Tab, NewTab, Reg, Insns, {[{State, M0, N0}], Cont}) ->
+    States0 = [{reg(Reg, State, D), M0 * 10 + D, N0 * 10 + D} || D <- lists:seq(1, 9)],
+    lists:foreach(
+      fun({S, M, N}) ->
+              S1 = lists:foldl(fun eval_op/2, S, Insns),
+              S1 =/= false and update_state(NewTab, S1, M, N)
       end,
-      #{},
-      lists:seq(1, 9));
-eval(Prog, Insns, States) ->
-    States1 =
-        maps:fold(
-          fun(State, {M, N}, StatesAcc) ->
-                  case lists:foldr(fun eval_impl/2, State, Insns) of
-                      false -> StatesAcc;
-                      State1 ->
-                          maps:update_with(
-                            State1,
-                            fun({M0, N0}) -> {min(M, M0), max(N, N0)} end,
-                            {M, N},
-                            StatesAcc)
-                  end
-          end,
-          #{},
-          States),
-    io:format("After ~s, ~p possible states~n", [fmt(hd(Insns)), maps:size(States1)]),
-    eval(Prog, [], States1).
+      States0),
+    eval_section(Tab, NewTab, Reg, Insns, ets:match_object(Cont)).
 
-eval_impl({_Line, Op, R, RI}, State) ->
+update_state(Tab, State, M, N) ->
+    case ets:lookup(Tab, State) of
+        [{State, M0, N0}] ->
+            ets:insert(Tab, {State, min(M0, M), max(N0, N)});
+        [] ->
+            ets:insert(Tab, {State, M, N})
+    end.
+
+eval_op(_, false) ->
+    false;
+eval_op({_Line, Op, R, RI}, State) ->
     Res = compute(Op, reg(R, State), reg(RI, State)),
     Res =/= false andalso reg(R, State, Res).
 
