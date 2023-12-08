@@ -1,5 +1,5 @@
-USING: arrays io.encodings.utf8 io.files kernel math math.parser ranges
-sequences sets splitting ;
+USING: accessors arrays io.encodings.utf8 io.files kernel math math.parser
+sequences sequences.extras sets splitting ;
 IN: day4
 
 <PRIVATE
@@ -9,10 +9,15 @@ IN: day4
 : parse-part ( str -- nums ) " " split [ empty? not ] filter [ string>number ] map ;
 : parse-line ( str -- card ) ":" split second "|" split [ parse-part ] map ;
 
-: score2 ( cards -- total-score ) [ wins ] map dup length 1 <array> [
-        swap [ dup pick ?nth swap dup ] dip + (a..b]
-        [ [ pick ?nth dupd + ] keep reach set-nth ] each drop
-    ] reduce-index sum ;
+TUPLE: score-state { remaining array } { total integer } ;
+: <score-state> ( remaining total -- score-state ) score-state boa ;
+
+: score2 ( cards -- total-score ) [ wins ] map dup length 1 <array> 0 <score-state>
+    [
+        [ [ remaining>> [ rest ] [ first ] bi ] dip swap <array> [ + ] 2map! ]
+        [ drop [ total>> ] [ remaining>> first ] bi + ]
+        2bi <score-state>
+    ] reduce total>> ;
 PRIVATE>
 
 : part1 ( lines -- total-score ) [ parse-line score ] map sum ;
