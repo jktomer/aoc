@@ -1,11 +1,9 @@
 #!/usr/bin/perl
 
-open INPUT, "day5.txt" or die $!;
-
 my ($minseatid, $maxseatid) = (1025, 0);
 my @usedSeats;
 $usedSeats[$minseatid] = 1;
-while (<INPUT>) {
+while (<>) {
     chomp;
     /^[BF]{7}[RL]{3}$/ or die "unrecognized input $_";
     y/BFRL/1010/;

@@ -3,7 +3,9 @@
 use strict;
 use feature qw/say/;
 
-my ($input, $iters, $count, $iters2) = @ARGV;
+my $input = <>;
+chomp $input;
+my ($iters, $count, $iters2) = (100, 1000000, 10000000);
 
 ## part 1
 

@@ -124,23 +124,28 @@ my ($id, $outsides) = findACorner();
 my $rotations = $CORNER_MAPPING{$outsides};
 my %cell = rotate($cells{$id}, $rotations);
 my @image = @{$cell{contents}};
+my @usedCells = ([$id]);
 my %used = ($id => 1);
+my $part1 = 1;
 
 while () {
     my %leftCell = %cell;
+    my %rightCell;
     while () {
         my ($nextId, $side, $flip) = match($cell{id}, $cell{R});
         last unless $nextId;
+        push @{$usedCells[-1]}, $nextId;
         die "double-use of cell $nextId" if $used{$nextId};
         $used{$nextId} = 1;
         my $rotations = ($EDGE_ORDER{L} - $EDGE_ORDER{$side}) % 4;
         %cell = rotate($cells{$nextId}, $rotations);
         %cell = vflip(%cell) if $flip;
-        @image[-$_] .= $cell{contents}[-$_] for (1..@{$cell{contents}});
+        $image[-$_] .= $cell{contents}[-$_] for (1..@{$cell{contents}});
     }
     die "mismatched rows\n" if length($image[-1]) != length($image[0]);
     my ($nextRow, $side, $flip) = match($leftCell{id}, $leftCell{B});
     last unless $nextRow;
+    push @usedCells, [$nextRow];
     die "double-use of cell $nextRow" if $used{$nextRow};
     $used{$nextRow} = 1;
     my $rotations = ($EDGE_ORDER{T} - $EDGE_ORDER{$side}) % 4;
@@ -158,4 +163,5 @@ for (1..4) {
     last if $monsters = monsters(@image);
     @image = map { my $row = $_; join("", map { substr($_, $row, 1) } @image) } 0..$#image;
 }
+say $usedCells[0][0] * $usedCells[0][-1] * $usedCells[-1][0] * $usedCells[-1][-1];
 say "[$monsters] ", $roughness - 15 * $monsters;
